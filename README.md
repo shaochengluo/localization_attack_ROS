@@ -58,12 +58,12 @@ source devel/setup.bash
 export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_gazebo turtlebot3_house.launch
 ```
-Run SLAM Node, in terminal 2:
+1.2 Run SLAM Node, in terminal 2:
 ```
 export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_slam turtlebot3_slam.launch slam_methods:=gmapping
 ```
-Run Teleoperation Node, in terminal 3:
+1.3 Run Teleoperation Node, in terminal 3:
 ```
 export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
@@ -81,181 +81,35 @@ roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
 
  CTRL-C to quit
 ```
-Save Map, in terminal 4:
+1.4 Save Map, in terminal 4:
 ```
 rosrun map_server map_saver -f ~/map
 ```
 
+### 2. Navigation in the simulated environment (Gazebo House)
 
-For its research efforts, the CPSL implemented a custom map server that additionally publishes a dynamic map that can incorporate updates from a ROS [sensor/msgs/PointCloud2](https://docs.ros.org/en/jade/api/sensor_msgs/html/msg/PointCloud2.html) or [jsk_recognition_msgs/BoundingBoxArray](https://docs.ros.org/en/jade/api/jsk_recognition_msgs/html/msg/BoundingBoxArray.html) messages. To ease the use of this new node, we created a [map_server_sensor_updates.launch](/CPSL_ROS_navigation_ROS_fork/map_server/launch/map_server_sensor_updates.launch) file. The defaults can be modified fairly easily in the launch file or via the terminal. As a quick way of getting started, the following command can be used to launch a map from a .yaml file (for a .pgm map). **NOTE: UPDATE THE PATH TO THE MAP WITH THE DESIRED MAP**
+2.1 Launch Simulation World, in terminal 1:
 ```
-cd catkin_ws
-source devel/setup.bash
-roslaunch map_server map_server_sensor_updates.launch map_path:=/home/locobot/data/maps/cpsl_full.yaml
+export TURTLEBOT3_MODEL=burger
+roslaunch turtlebot3_gazebo turtlebot3_world.launch
 ```
+2.2 Run Navigation Node, in terminal 2:
+```
+export TURTLEBOT3_MODEL=burger
+roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$HOME/map.yaml
+```
+2.3 Estimate Initial Pose
+Initial Pose Estimation must be performed before running the Navigation as this process initializes the AMCL parameters that are critical in Navigation. TurtleBot3 has to be correctly located on the map with the LDS sensor data that neatly overlaps the displayed map.
 
-### 2. Running the navigation stack using lidar
+Click the 2D Pose Estimate button in the RViz menu.
 
+Click on the map where the actual robot is located and drag the large green arrow toward the direction where the robot is facing.
+Repeat step 1 and 2 until the LDS sensor data is overlayed on the saved map.
+2.4 Precisely locate the robot on the map (Optional)
+2.4.1 Launch keyboard teleoperation node to precisely locate the robot on the map.
 ```
-roslaunch pcd2laserscan pcd2laserscan_lidar.launch use_rviz:=true
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
 ```
-
-### 3. Running Lidar Navigation -UGV
-
-terminal 1:
-
-```
-roslaunch xsens_mti_driver xsens_mti_node.launch
-```
-
-terminal 2:
-
-```
-roslaunch radar_launch kobuki.launch
-```
-
-terminal 3:
-```
-roslaunch velodyne_pointcloud VLP16_points.launch
-```
-
-terminal 4:
-```
-roslaunch map_server map_server_sensor_updates.launch map_path:=/home/locobot/data/maps/cpsl_full.yaml
-```
-
-terminal 5:
-```
-roslaunch odometry_ros lidar.launch
-```
-
-terminal 6:
-```
-roslaunch pcd2laserscan_lidar.launch use_rviz:=false
-```
-
-### 4. Running Radar Navigation
-
-terminal 1:
-
-```
-roslaunch xsens_mti_driver xsens_mti_node.launch
-```
-
-terminal 2:
-
-```
-roslaunch radar_launch kobuki.launch
-```
-
-terminal 3: start front radar
-```
-#unplug IWR6843 (front radar)
-ls /dev/ttyUSB* 
-#plug IWR6843 back in
-ls /dev/ttyUSB* #record the two new USB values
-#go to /home/locobot/CPSL_TI_Radar/CPSL_TI_Radar/json_radar_settings/radar_6843.json and update the CLI_port and data_port (assenidng order) with the new USB values. Then save it
-cd CPSL_TI_Radar/CPSL_TI_Radar
-poetry run python run_radar.py --json_config radar_6843.json
-```
-terminal 4: start back radar
-```
-cd CPSL_TI_Radar/CPSL_TI_Radar
-poetry run python run_radar.py --json_config radar_1443.json
-```
-terminal 5:
-```
-roslaunch map_server map_server_sensor_updates.launch map_path:=/home/locobot/data/maps/cpsl_full.yaml
-```
-
-terminal 6:
-```
-roslaunch odometry_ros radar.launch
-```
-
-terminal 7:
-```
-roslaunch pcd2laserscan pcd2laserscan_radar_nav.launch use_rviz:=false
-```
-terminal 8: to capture dataset of navigation trial
-```
-roslaunch radar_launch IWR6843_run_nav_dataset.launch config_file:=IWR_multi.json radar_enable:=true lidar_enable:=true camera_enable:=true imu_enable:=true vehicle_vel_enable:=true dataset_path:=/home/locobot/data/nav/wilk_basement_1 frame_rate:=20.0 frame_rate_high_speed_sensors:=200 views:=false
-```
-
-### 5. Running Radar Mapping
-
-The generated maps aren't great with this, but the code runs
-
-terminal 1:
-
-```
-roslaunch xsens_mti_driver xsens_mti_node.launch
-```
-
-terminal 2:
-
-```
-roslaunch radar_launch kobuki.launch
-```
-
-terminal 3: start front radar
-```
-#unplug IWR6843 (front radar)
-ls /dev/ttyUSB* 
-#plug IWR6843 back in
-ls /dev/ttyUSB* #record the two new USB values
-#go to /home/locobot/CPSL_TI_Radar/CPSL_TI_Radar/json_radar_settings/radar_6843.json and update the CLI_port and data_port (assenidng order) with the new USB values. Then save it
-cd CPSL_TI_Radar/CPSL_TI_Radar
-poetry run python run_radar.py --json_config radar_6843.json
-```
-terminal 4: start back radar
-```
-cd CPSL_TI_Radar/CPSL_TI_Radar
-poetry run python run_radar.py --json_config radar_1443.json
-```
-terminal 6:
-```
-roslaunch odometry_ros radar.launch 
-```
-
-terminal 7:
-```
-roslaunch pcd2laserscan pcd2laserscan_radar_map.launch
-```
-
-Terminal 8:
-```
-roslaunch pcd2laserscan hector_mapping_revised.launch
-```
-
-### 6. Running Lidar Odometry -UAV
-
-
-terminal 1:
-```
-roslaunch livox_ros_driver2 rviz_MID360.launch rviz_enable:=false
-```
-
-terminal 2:
-```
-roslaunch map_server map_server_sensor_updates.launch map_path:=/home/cpsl/data/maps/north.yaml
-```
-
-terminal 3:
-```
-roslaunch odometry_ros lidar_uav.launch
-```
-
-### 5. Athena Demo Visualization
-In addition to running the pipeline, we have several viewer's available for visualizing the feed
-
-USB camera:
-```
-roslaunch usb_cam usb_cam_cpsl.launch
-```
-
-RVIZ (run the "rviz" command in a new terminal for each viewer) configurations
-* CPSL_ROS_Navigation_and_Mapping/pcd2laserscan/config/navigation.rviz
-* CPSL_ROS_Navigation_and_Mapping/odometry_ros/rviz_configs/lidar.rviz
-* CPSL_ROS_Navigation_and_Mapping/odometry_ros/rviz_configs/radar.rviz
-
+2.4.2 Move the robot back and forth a bit to collect the surrounding environment information and narrow down the estimated location of the TurtleBot3 on the map which is displayed with tiny green arrows.
+ 
+2.4.3Terminate the keyboard teleoperation node by entering Ctrl + C to the teleop node terminal in order to prevent different cmd_vel values are published from multiple nodes during Navigation.
