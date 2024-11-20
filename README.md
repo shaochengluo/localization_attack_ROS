@@ -1,5 +1,5 @@
 # localization_attack_ros
-Localization attack virtual testbed in ROS+Gazebo
+Localization attack virtual testbed in ROS (Noetic)+Gazebo
 
 ## Installation
 
