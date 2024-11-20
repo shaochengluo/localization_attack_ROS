@@ -1,0 +1,135 @@
+#!/usr/bin/env python
+
+
+import rospy
+import math
+import nav_msgs.msg
+import geometry_msgs.msg
+from tf.transformations import euler_from_quaternion
+
+# global vars
+x = 0
+y = 0
+w_o = 0
+x_o = 0
+y_o = 0
+z_o = 0
+yaw_t = 0
+linear_speed = 0
+angular_speed = 0
+
+X_t = 0
+Y_t = 0
+X_t_Pre = 0
+Y_t_Pre = 0
+X_diff_room = [-6.0, -6.0, -6.2, -6.2]        # x of target
+Y_diff_room = [-2, 3, 3, -2]        # y of target
+X_same_room = [-4.5, -1.0, -1.0, -4.5]         # x of target
+Y_same_room = [ 4.0, 4.0, 1.0, 1.0]        # y of target
+
+
+
+def Trans_robot_pose(msg):  # callback func
+    # global loc
+    global x
+    global y
+    global w_o    # current quat info
+    global x_o
+    global y_o
+    global z_o
+    x = msg.pose.pose.position.x
+    y = msg.pose.pose.position.y
+    w_o = msg.pose.pose.orientation.w
+    x_o = msg.pose.pose.orientation.x
+    y_o = msg.pose.pose.orientation.y
+    z_o = msg.pose.pose.orientation.z
+    return w_o, y_o, z_o, x_o, x, y
+
+def stop_turtlebot():
+	turtle_vel = rospy.Publisher('/tb3_0/cmd_vel', geometry_msgs.msg.Twist, queue_size=1)
+	msg = geometry_msgs.msg.Twist()
+	msg.linear.x = 0
+	msg.angular.z = 0
+	turtle_vel.publish(msg)    # pub vel control commands
+
+
+if __name__ == '__main__':
+	try:
+		rospy.init_node('tb3_0_traj')
+
+		rospy.Subscriber('/tb3_0/odom', nav_msgs.msg.Odometry,  Trans_robot_pose) # get current pose
+		turtle_vel = rospy.Publisher('/tb3_0/cmd_vel', geometry_msgs.msg.Twist, queue_size=1)
+		rate = rospy.Rate(10.0)
+
+		same_room = rospy.get_param("same_room", "default_value")
+		if (same_room) :
+			X_sim = X_same_room
+			Y_sim = Y_same_room
+		else :
+			X_sim = X_diff_room
+			Y_sim = Y_diff_room		
+
+		wp_idx = 0
+		wp_max =  len(X_sim)
+
+		while not rospy.is_shutdown():
+			msg = geometry_msgs.msg.Twist()
+			(roll, pitch, yaw) = euler_from_quaternion([x_o,y_o,z_o,w_o])  # convert quat to euler
+			if yaw < 0:
+				yaw = yaw + 2 * math.pi
+
+			X_t = X_sim[wp_idx]
+			Y_t = Y_sim[wp_idx]
+
+			D_err = math.sqrt(math.pow((X_t - x), 2) + math.pow((Y_t - y), 2))
+
+			# determine the sign
+			if (Y_t - y) == 0 and (X_t - x) > 0:
+				yaw_t = 0
+			if (Y_t - y) > 0 and (X_t - x) > 0:
+				yaw_t = math.atan((Y_t - y) / (X_t - x))
+			if (Y_t - y) > 0 and (X_t - x) == 0:
+				yaw_t = 0.5 * math.pi
+			if (Y_t - y) > 0 and (X_t - x) < 0:
+				yaw_t = math.atan((Y_t - y) / (X_t - x)) + math.pi
+			if (Y_t - y) == 0 and (X_t - x) < 0:
+				yaw_t = math.pi
+			if (Y_t - y) < 0 and (X_t - x) < 0:
+				yaw_t = math.atan((Y_t - y) / (X_t - x)) + math.pi
+			if (Y_t - y) < 0 and (X_t - x) == 0:
+				yaw_t = 1.5 * math.pi
+			if (Y_t - y) < 0 and (X_t - x) > 0:
+				yaw_t = math.atan((Y_t - y) / (X_t - x)) + 2 * math.pi
+
+			Theta_err = yaw_t - yaw
+
+			if Theta_err < -math.pi:
+				Theta_err = Theta_err + 2 * math.pi
+			if Theta_err > math.pi:
+				Theta_err = Theta_err - 2 * math.pi
+
+			if D_err < 0.3:        # when to move to the next loc
+				X_t_Pre = X_t
+				Y_t_Pre = Y_t
+				wp_idx = wp_idx + 1
+				print("TB3_0 arrived at the waypoint " + str(wp_idx)+ " of "+ str(wp_max))
+				if wp_idx == wp_max:
+					wp_idx = 0
+
+				# simple p controller
+			linear_speed = 0.1 * D_err
+			angular_speed = 4.0 * Theta_err
+
+			msg.linear.x = linear_speed
+			msg.angular.z = angular_speed
+
+			turtle_vel.publish(msg)    # pub vel control commands
+
+
+			rate.sleep()
+	except rospy.ROSInterruptException:
+		pass
+	except KeyboardInterrupt:
+		stop_turtlebot() #no use, why?
+		rospy.loginfo("Node manually terminated by user.")
+		pass

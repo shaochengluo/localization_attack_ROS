@@ -1,0 +1,17 @@
+<launch>
+  <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
+  <arg name="same_room_tb3_0_tb3_1" default="1"/>
+
+  <param name="model" value="$(arg model)"/>
+
+  <node pkg="turtlebot3_teleop" type="tb3_0_traj" name="tb3_0_traj"  output="screen">
+    <param name="same_room" value="$(arg same_room_tb3_0_tb3_1)"/>
+  </node>
+
+  <node pkg="turtlebot3_teleop" type="tb3_1_traj" name="tb3_1_traj"  output="screen">
+  </node>
+
+  <node pkg="turtlebot3_teleop" type="tb3_2_traj" name="tb3_2_traj"  output="screen">
+  </node>
+  
+</launch>
