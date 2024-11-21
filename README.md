@@ -91,7 +91,7 @@ rosrun map_server map_saver -f ~/map
 2.1 Launch Simulation World, in terminal 1:
 ```
 export TURTLEBOT3_MODEL=burger
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
+roslaunch turtlebot3_gazebo turtlebot3_house.launch
 ```
 
 2.2 Run Navigation Node, in terminal 2:
