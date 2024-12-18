@@ -1,6 +1,6 @@
 <launch>
   <!-- Arguments -->
-  <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
+  <arg name="model" default="uav" doc="model type [burger, waffle, waffle_pi, uav]"/>
   <arg name="map_file" default="$(find turtlebot3_navigation)/maps/map.yaml"/>
   <arg name="open_rviz" default="true"/>
   <arg name="move_forward_only" default="true"/>
@@ -13,11 +13,12 @@
   <!-- Map server -->
   <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)"/>
 
-  <!-- AMCL -->
+  <!-- ICP -->
+  <!-- <include file="$(find i_see_pee)/config/example.launch"/> -->
   <include file="$(find turtlebot3_navigation)/launch/amcl.launch"/>
 
   <!-- move_base -->
-  <include file="$(find turtlebot3_navigation)/launch/move_base.launch">
+  <include file="$(find turtlebot3_navigation)/launch/move_base_uav.launch">
     <arg name="model" value="$(arg model)" />
     <arg name="move_forward_only" value="$(arg move_forward_only)"/>
   </include>
